@@ -89,7 +89,7 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
 
       OneSignal.sdkType = "react";
 
-      String appId = appIdFromManifest(mReactApplicationContext);
+      String appId = appIdFromManifest(getReactApplicationContext());
 
       if (appId != null && appId.length() > 0) {
          init(appId);
@@ -97,7 +97,7 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
    }
 
    private void sendEvent(String eventName, Object params) {
-      mReactContext
+      ((ReactContext)getReactApplicationContext())
                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                .emit(eventName, params);
    }
@@ -108,7 +108,7 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
 
    @ReactMethod 
    public void init(String appId) {
-      Context context = mReactApplicationContext.getCurrentActivity();
+      Context context = getReactApplicationContext().getCurrentActivity();
 
       if (oneSignalInitDone) {
          Log.e("onesignal", "Already initialized the OneSignal React-Native SDK");
@@ -445,6 +445,8 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
 
    @Override
    public void onHostResume() {
+      mReactApplicationContext = getReactApplicationContext();
+
       initOneSignal();
    }
 
