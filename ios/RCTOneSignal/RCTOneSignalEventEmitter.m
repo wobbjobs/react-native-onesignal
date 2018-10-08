@@ -343,5 +343,8 @@ RCT_EXPORT_METHOD(setLogLevel:(int)logLevel visualLogLevel:(int)visualLogLevel) 
     [OneSignal setLogLevel:logLevel visualLevel:visualLogLevel];
 }
 
+RCT_EXPORT_METHOD(presentAppSettings) {
+    [OneSignal presentAppSettings];
+}
 
 @end

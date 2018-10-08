@@ -355,4 +355,14 @@ export default class OneSignal {
        return RNOneSignal.userProvidedPrivacyConsent();
     }
 
+   
+    static presentAppSettings() {
+      if (!checkIfInitialized()) return;
+      
+      if (Platform.OS == 'android') {
+         console.warn("presentAppSettings() is an iOS-only function.")
+      } else {
+         RNOneSignal.presentAppSettings();
+      }
+    }
 }
