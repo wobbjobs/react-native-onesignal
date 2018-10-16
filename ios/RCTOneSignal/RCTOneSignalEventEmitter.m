@@ -88,6 +88,10 @@ RCT_EXPORT_MODULE(RCTOneSignal)
 
 #pragma mark Exported Methods
 
+RCT_EXPORT_METHOD(log:(int)level withMessage:(NSString *)message) {
+    [OneSignal onesignal_Log:(ONE_S_LOG_LEVEL)level message:message];
+}
+
 RCT_EXPORT_METHOD(setRequiresUserPrivacyConsent:(BOOL)required) {
     [OneSignal setRequiresUserPrivacyConsent:required];
 }
@@ -113,61 +117,6 @@ RCT_EXPORT_METHOD(promptForPushNotificationPermissions:(RCTResponseSenderBlock)c
     [OneSignal promptForPushNotificationsWithUserResponse:^(BOOL accepted) {
         callback(@[@(accepted)]);
     }];
-}
-
-RCT_EXPORT_METHOD(checkPermissions:(RCTResponseSenderBlock)callback) {
-    if (RCTRunningInAppExtension()) {
-        callback(@[@{@"alert": @NO, @"badge": @NO, @"sound": @NO}]);
-        return;
-    }
-    
-    NSUInteger types = 0;
-    if ([UIApplication instancesRespondToSelector:@selector(currentUserNotificationSettings)]) {
-        types = [RCTSharedApplication() currentUserNotificationSettings].types;
-    } else {
-        
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_8_0
-        types = [RCTSharedApplication() enabledRemoteNotificationTypes];
-#endif
-        
-    }
-    
-    callback(@[@{
-       @"alert": @((types & UIUserNotificationTypeAlert) > 0),
-       @"badge": @((types & UIUserNotificationTypeBadge) > 0),
-       @"sound": @((types & UIUserNotificationTypeSound) > 0),
-    }]);
-}
-
-RCT_EXPORT_METHOD(requestPermissions:(NSDictionary *)permissions) {
-    if (RCTRunningInAppExtension()) {
-        return;
-    }
-    
-    UIUserNotificationType types = UIUserNotificationTypeNone;
-    if (permissions) {
-        if ([RCTConvert BOOL:permissions[@"alert"]]) {
-            types |= UIUserNotificationTypeAlert;
-        }
-        if ([RCTConvert BOOL:permissions[@"badge"]]) {
-            types |= UIUserNotificationTypeBadge;
-        }
-        if ([RCTConvert BOOL:permissions[@"sound"]]) {
-            types |= UIUserNotificationTypeSound;
-        }
-    } else {
-        types = UIUserNotificationTypeAlert | UIUserNotificationTypeBadge | UIUserNotificationTypeSound;
-    }
-    
-    UIApplication *app = RCTSharedApplication();
-    if ([app respondsToSelector:@selector(registerUserNotificationSettings:)]) {
-        UIUserNotificationSettings *notificationSettings =
-        [UIUserNotificationSettings settingsForTypes:(NSUInteger)types categories:nil];
-        [app registerUserNotificationSettings:notificationSettings];
-        [app registerForRemoteNotifications];
-    } else {
-        [app registerForRemoteNotificationTypes:(NSUInteger)types];
-    }
 }
 
 RCT_EXPORT_METHOD(setEmail :(NSString *)email withAuthHash:(NSString *)authHash withResponse:(RCTResponseSenderBlock)callback) {
@@ -246,10 +195,6 @@ RCT_EXPORT_METHOD(setInFocusDisplayType:(int)displayType) {
     [OneSignal setInFocusDisplayType:displayType];
 }
 
-RCT_EXPORT_METHOD(registerForPushNotifications) {
-    [OneSignal registerForPushNotifications];
-}
-
 RCT_EXPORT_METHOD(promptForPushNotificationsWithUserResponse:(RCTResponseSenderBlock)callback) {
     [OneSignal promptForPushNotificationsWithUserResponse:^(BOOL accepted) {
         [OneSignal onesignal_Log:ONE_S_LL_VERBOSE message:@"Prompt For Push Notifications Success"];
@@ -261,23 +206,13 @@ RCT_EXPORT_METHOD(sendTag:(NSString *)key value:(NSString*)value) {
     [OneSignal sendTag:key value:value];
 }
 
-RCT_EXPORT_METHOD(configure) {
-    [OneSignal IdsAvailable:^(NSString* userId, NSString* pushToken) {
-        
-        NSDictionary *params = @{
-         @"pushToken": pushToken ?: [NSNull null],
-         @"userId" : userId ?: [NSNull null]
-        };
-        
-        [RCTOneSignalEventEmitter sendEventWithName:@"OneSignal-idsAvailable" withBody:params];
-    }];
-}
-
-RCT_EXPORT_METHOD(sendTags:(NSDictionary *)properties) {
-    [OneSignal sendTags:properties onSuccess:^(NSDictionary *sucess) {
+RCT_EXPORT_METHOD(sendTags:(NSDictionary *)properties withResponse:(RCTResponseSenderBlock)callback) {
+    [OneSignal sendTags:properties onSuccess:^(NSDictionary *success) {
         [OneSignal onesignal_Log:ONE_S_LL_VERBOSE message:@"Send Tags Success"];
+        callback(@[success]);
     } onFailure:^(NSError *error) {
         [OneSignal onesignal_Log:ONE_S_LL_ERROR message:[NSString stringWithFormat:@"Send Tags Failure With Error: %@", error]];
+        callback(@[error]);
     }];}
 
 RCT_EXPORT_METHOD(getTags:(RCTResponseSenderBlock)callback) {
@@ -294,8 +229,12 @@ RCT_EXPORT_METHOD(setLocationShared:(BOOL)shared) {
     [OneSignal setLocationShared:shared];
 }
 
-RCT_EXPORT_METHOD(deleteTag:(NSString *)key) {
-    [OneSignal deleteTag:key];
+RCT_EXPORT_METHOD(deleteTags:(NSArray *)keys withResponse:(RCTResponseSenderBlock)callback) {
+    [OneSignal deleteTags:keys onSuccess:^(NSDictionary *result) {
+        callback(@[result]);
+    } onFailure:^(NSError *error) {
+        callback(@[error]);
+    }];
 }
 
 RCT_EXPORT_METHOD(setSubscription:(BOOL)enable) {
@@ -307,32 +246,12 @@ RCT_EXPORT_METHOD(promptLocation) {
 }
 
 // The post notification endpoint accepts four parameters.
-RCT_EXPORT_METHOD(postNotification:(NSDictionary *)contents data:(NSDictionary *)data player_id:(id)player_ids other_parameters:(NSDictionary *)other_parameters) {
-    NSDictionary * additionalData = data ? @{@"p2p_notification": data} : @{};
-    
-    NSMutableDictionary * extendedData = [additionalData mutableCopy];
-    BOOL isHidden = [[other_parameters ?: @{} objectForKey:@"hidden"] boolValue];
-    if (isHidden) {
-        [extendedData setObject:[NSNumber numberWithBool:YES] forKey:@"hidden"];
-    }
-    
-    NSMutableDictionary *notification = [NSMutableDictionary new];
-    notification[@"contents"] = contents;
-    notification[@"data"] = extendedData;
-    
-    if (player_ids && [player_ids isKindOfClass:[NSArray class]]) {
-        //array of player ids
-        notification[@"include_player_ids"] = (NSArray<NSString *> *)player_ids;
-    } else if (player_ids && [player_ids isKindOfClass:[NSString class]]) {
-        //individual player id
-        notification[@"include_player_ids"] = @[(NSString *)player_ids];
-    }
-    
-    if (other_parameters) {
-        [notification addEntriesFromDictionary:other_parameters];
-    }
-    
-    [OneSignal postNotification:notification];
+RCT_EXPORT_METHOD(postNotification:(NSDictionary *)notification withResponse:(RCTResponseSenderBlock)callback) {
+    [OneSignal postNotification:notification onSuccess:^(NSDictionary *result) {
+        callback(@[result]);
+    } onFailure:^(NSError *error) {
+        callback(@[error]);
+    }];
 }
 
 RCT_EXPORT_METHOD(syncHashedEmail:(NSString*)email) {
@@ -343,5 +262,8 @@ RCT_EXPORT_METHOD(setLogLevel:(int)logLevel visualLogLevel:(int)visualLogLevel) 
     [OneSignal setLogLevel:logLevel visualLevel:visualLogLevel];
 }
 
+RCT_EXPORT_METHOD(presentAppSettings) {
+    [OneSignal presentAppSettings];
+}
 
 @end

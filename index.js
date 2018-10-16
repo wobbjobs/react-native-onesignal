@@ -1,358 +1,254 @@
-
-'use strict';
-
-import { NativeModules, NativeEventEmitter, NetInfo, Platform } from 'react-native';
-import invariant from 'invariant';
-
-const RNOneSignal = NativeModules.OneSignal;
-
-const eventBroadcastNames = [
-    'OneSignal-remoteNotificationReceived',
-    'OneSignal-remoteNotificationOpened',
-    'OneSignal-idsAvailable',
-    'OneSignal-emailSubscription'
-];
-
-var oneSignalEventEmitter;
-
-var _eventNames = [ "received", "opened", "ids", "emailSubscription"];
-
-var _notificationHandler = new Map();
-var _notificationCache = new Map();
-var _listeners = [];
-
-if (RNOneSignal != null) {
-   oneSignalEventEmitter = new NativeEventEmitter(RNOneSignal);
-
-   for(var i = 0; i < eventBroadcastNames.length; i++) {
-      var eventBroadcastName = eventBroadcastNames[i];
-      var eventName = _eventNames[i];
-
-      _listeners[eventName] = handleEventBroadcast(eventName, eventBroadcastName)
-   }
-}
-
-function handleEventBroadcast(type, broadcast) {
-   return oneSignalEventEmitter.addListener(
-      broadcast, (notification) => {
-            // Check if we have added listener for this type yet
-            // Cache the result first if we have not.
-            var handler = _notificationHandler.get(type);
-
-            if (handler) {
-               handler(notification);
-            } else {
-               _notificationCache.set(type, notification);
-            }
-      }
-   );
-}
-
-function checkIfInitialized() {
-   return RNOneSignal != null;
-}
-
-export default class OneSignal {
-    static addEventListener(type: any, handler: Function) {
-       if (!checkIfInitialized()) return;
-
-        // Listen to events of notification received, opened, device registered and IDSAvailable.
-
-        invariant(
-            type === 'received' || type === 'opened' || type === 'ids' || type == 'emailSubscription',
-            'OneSignal only supports `received`, `opened`, and `ids` events'
-        );
-
-        _notificationHandler.set(type, handler);
-
-        // Check if there is a cache for this type of event
-        var cache = _notificationCache.get(type);
-        if (handler && cache) {
-            handler(cache);
-            _notificationCache.delete(type);
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const react_native_1 = require("react-native");
+const defines_1 = require("./defines");
+/** Publicly export enums defined in defines.ts */
+var defines_2 = require("./defines");
+exports.OSLogLevel = defines_2.OSLogLevel;
+exports.OSNotificationActionType = defines_2.OSNotificationActionType;
+exports.OSNotificationDisplayType = defines_2.OSNotificationDisplayType;
+exports.OSCreateNotificationBadgeType = defines_2.OSCreateNotificationBadgeType;
+var notification_1 = require("./notification");
+exports.OSCreateNotification = notification_1.OSCreateNotification;
+exports.OSActionButton = notification_1.OSActionButton;
+/** Define the native module */
+const RNOneSignal = react_native_1.NativeModules.OneSignal;
+class OneSignal {
+    constructor() {
+        /**
+         * Maps event names to event emitter subscriptions.
+         */
+        this.listeners = new Map();
+        /**
+         * Maps event names to the app's added event listeners
+         * (eg. using OneSignal.addSubscriptionListener() etc.)
+         */
+        this.eventSubscribers = new Map();
+        /**
+         * Holds a cache of events that were received before the
+         * app added a subscriber for the event
+         */
+        this.cachedEvents = new Map();
+        this.eventEmitter = new react_native_1.NativeEventEmitter(RNOneSignal);
+        defines_1.Events.forEach(event => {
+            this.cachedEvents.set(event, []);
+            this.listeners.set(event, this.eventEmitter.addListener(event, notification => {
+                let handlers = this.eventSubscribers.get(event);
+                if (handlers && handlers.length > 0) {
+                    handlers.forEach(handler => {
+                        handler(notification);
+                    });
+                }
+                else {
+                    var existing = this.cachedEvents.get(event);
+                    if (existing) {
+                        existing.push(notification);
+                        this.cachedEvents.set(event, existing);
+                    }
+                    else {
+                        this.cachedEvents.set(event, [notification]);
+                    }
+                }
+            }));
+        });
+    }
+    addListener(event, handler) {
+        var existingListeners = this.eventSubscribers.get(event);
+        if (existingListeners) {
+            existingListeners.push(handler);
+            this.eventSubscribers.set(event, existingListeners);
+        }
+        else {
+            this.eventSubscribers.set(event, [handler]);
+        }
+        var cached = this.cachedEvents.get(event);
+        if (cached && cached.length > 0) {
+            cached.forEach(notification => {
+                handler(notification);
+            });
+        }
+        this.cachedEvents.delete(event);
+    }
+    onesignalLog(level, message) {
+        RNOneSignal.log(level, message);
+    }
+    /**
+     * Adds an observer that fires whenever a notification is received.
+     * NOTE: This function may not fire reliably if your app is closed.
+     *
+     * @param handler The callback/function that fires when a notification
+     * is received.
+     */
+    addNotificationReceivedObserver(handler) {
+        this.addListener(defines_1.OSEvent.received, handler);
+    }
+    /**
+     * Adds an observer that fires when a notification is opened.
+     *
+     * @param handler : The callback/function that fires when a
+     * notification is opened
+     */
+    addNotificationOpenedObserver(handler) {
+        this.addListener(defines_1.OSEvent.opened, handler);
+    }
+    /**
+     * This observer fires whenever the user's push notification subscription
+     * state changes with regards to OneSignal. For example, when the user
+     * is registered with OneSignal and gets a userId, this observer fires.
+     *
+     * @param handler The callback/function that fires when the
+     * user's push notification subscription state changes.
+     */
+    addSubscriptionObserver(handler) {
+        this.addListener(defines_1.OSEvent.subscription, handler);
+    }
+    /**
+     * This observer fires when the user's push permission changes. For example,
+     * if the user in iOS accepts push notification permission, this observer fires.
+     *
+     * @param handler The callback/function that fires when permission changes.
+     */
+    addPermissionObserver(handler) {
+        this.addListener(defines_1.OSEvent.permission, handler);
+    }
+    /**
+     * This observer fires when the user's email subscription state changes. For
+     * example, when the user uses setEmail() and is assigned an email userId,
+     * this observer will fire.
+     *
+     * @param handler The callback/function that fires when the email subscription
+     * state changes.
+     */
+    addEmailSubscriptionObserver(handler) {
+        this.addListener(defines_1.OSEvent.emailSubscription, handler);
+    }
+    /**
+     * Clears all event observers/listeners
+     */
+    clearObservers() {
+        this.eventSubscribers.clear();
+    }
+    /**
+     * iOS-only.
+     * Prompts for push notification permission. Replaces registerForPushNotifications()
+     */
+    promptForPushNotificationPermission(callback) {
+        if (react_native_1.Platform.OS == 'ios') {
+            RNOneSignal.promptForPushNotificationPermission(callback || function () { });
+        }
+        else {
+            this.onesignalLog(defines_1.OSLogLevel.warn, "promptForPushNotificationPermission() is only applicable in iOS.");
         }
     }
-
-    static removeEventListener(type, handler) {
-      if (!checkIfInitialized()) return;
-
-        invariant(
-            type === 'received' || type === 'opened' || type === 'ids' || type == 'emailSubscription',
-            'OneSignal only supports `received`, `opened`, and `ids` events'
-        );
-
-        _notificationHandler.delete(type);
-    }
-
-    static clearListeners() {
-      if (!checkIfInitialized()) return;
-
-        for(var i = 0; i < _eventNames.length; i++) {
-            _listeners[_eventNames].remove();
+    /**
+     * Initializes the OneSignal SDK.
+     *
+     * @param appId The OneSignal App ID for your application.
+     * @param iOSSettings iOS-specific to control various settings, such as whether
+     *    or not to prompt users before opening a push notification URL webview
+     */
+    init(appId, iOSSettings) {
+        if (react_native_1.Platform.OS == 'ios') {
+            RNOneSignal.initWithAppId(appId, iOSSettings);
+        }
+        else {
+            RNOneSignal.init(appId);
         }
     }
-
-    static registerForPushNotifications() {
-      if (!checkIfInitialized()) return;
-
-        if (Platform.OS === 'ios') {
-            RNOneSignal.registerForPushNotifications();
-        } else {
-            console.log("This function is not supported on Android");
-        }
+    getPermissionSubscriptionState(callback) {
+        console.log("Getting permission subscription state");
+        RNOneSignal.getPermissionSubscriptionState(callback || function () { });
     }
-
-    static promptForPushNotificationsWithUserResponse(callback: Function) {
-      if (!checkIfInitialized()) return;
-
-        if (Platform.OS === 'ios') {
-            invariant(
-                typeof callback === 'function',
-                'Must provide a valid callback'
-            );
-            RNOneSignal.promptForPushNotificationsWithUserResponse(callback);
-        } else {
-            console.log("This function is not supported on Android");
-        }
+    sendTag(key, value, callback) {
+        this.sendTags({ key: value }, callback || function () { });
     }
-
-    static requestPermissions(permissions) {
-      if (!checkIfInitialized()) return;
-
-        var requestedPermissions = {};
-        if (Platform.OS === 'ios') {
-            if (permissions) {
-                requestedPermissions = {
-                    alert: !!permissions.alert,
-                    badge: !!permissions.badge,
-                    sound: !!permissions.sound
-                };
-            } else {
-                requestedPermissions = {
-                    alert: true,
-                    badge: true,
-                    sound: true
-                };
-            }
-            RNOneSignal.requestPermissions(requestedPermissions);
-        } else {
-            console.log("This function is not supported on Android");
-        }
+    sendTags(tags, callback) {
+        RNOneSignal.sendTags(tags, callback || function () { });
     }
-
-    static configure() {
-      if (!checkIfInitialized()) return;
-
-        RNOneSignal.configure();
+    deleteTags(keys, callback) {
+        RNOneSignal.deleteTags(keys, callback || function () { });
     }
-
-    static init(appId, iOSSettings) {
-       if (Platform.OS == 'ios') {
-         RNOneSignal.initWithAppId(appId, iOSSettings);
-       } else {
-         RNOneSignal.init(appId);
-       }
+    deleteTag(key, callback) {
+        this.deleteTags([key], callback || function () { });
     }
-
-    static checkPermissions(callback: Function) {
-      if (!checkIfInitialized()) return;
-
-        if (Platform.OS === 'ios') {
-            invariant(
-                typeof callback === 'function',
-                'Must provide a valid callback'
-            );
-            RNOneSignal.checkPermissions(callback);
-        } else {
-            console.log("This function is not supported on Android");
-        }
-    }
-
-    static promptForPushNotificationPermissions(callback) {
-      if (!checkIfInitialized()) return;
-
-       if (Platform.OS === 'ios') {
-         RNOneSignal.promptForPushNotificationPermissions(callback);
-       } else {
-          console.log('This function is not supported on Android');
-       }
-    }
-
-    static getPermissionSubscriptionState(callback: Function) {
-      if (!checkIfInitialized()) return;
-
-        invariant(
-            typeof callback === 'function',
-            'Must provide a valid callback'
-        );
-        RNOneSignal.getPermissionSubscriptionState(callback);
-    }
-
-    static sendTag(key, value) {
-      if (!checkIfInitialized()) return;
-
-        RNOneSignal.sendTag(key, value);
-    }
-
-    static sendTags(tags) {
-      if (!checkIfInitialized()) return;
-
-        RNOneSignal.sendTags(tags || {});
-    }
-
-    static getTags(next) {
-      if (!checkIfInitialized()) return;
-
-        RNOneSignal.getTags(next);
-    }
-
-    static deleteTag(key) {
-      if (!checkIfInitialized()) return;
-
-        RNOneSignal.deleteTag(key);
-    }
-
-    static enableVibrate(enable) {
-      if (!checkIfInitialized()) return;
-
-        if (Platform.OS === 'android') {
+    enableAndroidVibrate(enable) {
+        if (react_native_1.Platform.OS == 'android') {
             RNOneSignal.enableVibrate(enable);
-        } else {
-            console.log("This function is not supported on iOS");
+        }
+        else {
+            this.onesignalLog(defines_1.OSLogLevel.warn, "enableAndroidVibrate() is not available in iOS.");
         }
     }
-
-    static enableSound(enable) {
-      if (!checkIfInitialized()) return;
-
-        if (Platform.OS === 'android') {
+    enableAndroidSound(enable) {
+        if (react_native_1.Platform.OS == 'android') {
             RNOneSignal.enableSound(enable);
-        } else {
-            console.log("This function is not supported on iOS");
+        }
+        else {
+            this.onesignalLog(defines_1.OSLogLevel.warn, "enableAndroidSound() is not available in iOS.");
         }
     }
-
-    static setEmail(email, emailAuthCode, callback) {
-      if (!checkIfInitialized()) return;
-
-        if (emailAuthCode == undefined) {
-            //emailAuthCode is an optional parameter
-            //since JS does not support function overloading,
-            //unauthenticated setEmail calls will have emailAuthCode as the callback
-
-            RNOneSignal.setUnauthenticatedEmail(email, function(){});
-        } else if (callback == undefined && typeof emailAuthCode == 'function') {
-            RNOneSignal.setUnauthenticatedEmail(email, emailAuthCode);
-        } else if (callback == undefined) {
-            RNOneSignal.setEmail(email, emailAuthCode, function(){});
-        } else {
-            RNOneSignal.setEmail(email, emailAuthCode, callback);
-        }
+    setEmail(email, emailAuthCode, callback) {
+        RNOneSignal.setEmail(email, emailAuthCode, callback || function () { });
     }
-
-    static logoutEmail(callback) {
-      if (!checkIfInitialized()) return;
-
-        invariant(
-            typeof callback === 'function',
-            'Must provide a valid callback'
-        );
-
-        RNOneSignal.logoutEmail(callback);
+    logoutEmail(callback) {
+        RNOneSignal.logoutEmail(callback || function () { });
     }
-
-    static setLocationShared(shared) {
-      if (!checkIfInitialized()) return;
-
+    setLocationShared(shared) {
         RNOneSignal.setLocationShared(shared);
     }
-
-    static setSubscription(enable) {
-      if (!checkIfInitialized()) return;
-
-        RNOneSignal.setSubscription(enable);
+    setSubscription(enabled) {
+        RNOneSignal.setSubscription(enabled);
     }
-
-    static promptLocation() {
-      if (!checkIfInitialized()) return;
-
-        //Supported in both iOS & Android
+    promptLocation() {
         RNOneSignal.promptLocation();
     }
-
-    static inFocusDisplaying(displayOption) {
-      if (!checkIfInitialized()) return;
-
-        if (Platform.OS === 'android') {
-            //Android: Set Display option of the notifications. displayOption is of type OSInFocusDisplayOption
-            // 0 -> None, 1 -> InAppAlert, 2 -> Notification
-            RNOneSignal.inFocusDisplaying(displayOption);
-        } else {
-            //iOS: displayOption is a number, 0 -> None, 1 -> InAppAlert, 2 -> Notification
-            RNOneSignal.setInFocusDisplayType(displayOption);
-        }
+    setInFocusDisplayType(type) {
+        RNOneSignal.setInFocusDisplayType(type);
     }
-
-    static postNotification(contents, data, player_id, otherParameters) {
-      if (!checkIfInitialized()) return;
-
-        if (Platform.OS === 'android') {
-            RNOneSignal.postNotification(JSON.stringify(contents), JSON.stringify(data), player_id, JSON.stringify(otherParameters));
-        } else {
-            RNOneSignal.postNotification(contents, data, player_id, otherParameters);
-        }
+    postNotification(notification, callback) {
+        console.log("notification:");
+        console.log(notification);
+        RNOneSignal.postNotification(notification.build(), callback || function () { });
     }
-
-    static clearOneSignalNotifications() {
-      if (!checkIfInitialized()) return;
-
-        if (Platform.OS === 'android') {
+    clearOneSignalAndroidNotifications() {
+        if (react_native_1.Platform.OS == 'android') {
             RNOneSignal.clearOneSignalNotifications();
-        } else {
-            console.log("This function is not supported on iOS");
+        }
+        else {
+            this.onesignalLog(defines_1.OSLogLevel.warn, 'clearOneSignalAndroidNotifications() is not available in iOS');
         }
     }
-
-    static cancelNotification(id) {
-      if (!checkIfInitialized()) return;
-
-        if (Platform.OS === 'android') {
-            RNOneSignal.cancelNotification(id);
-        } else {
-            console.log("This function is not supported on iOS");
+    cancelAndroidNotification(notificationId) {
+        if (react_native_1.Platform.OS == 'android') {
+            RNOneSignal.cancelNotification(notificationId);
+        }
+        else {
+            this.onesignalLog(defines_1.OSLogLevel.warn, 'cancelAndroidNotification() is not available in iOS.');
         }
     }
-
-    //Sends MD5 and SHA1 hashes of the user's email address (https://documentation.onesignal.com/docs/ios-sdk-api#section-synchashedemail)
-    static syncHashedEmail(email) {
-      if (!checkIfInitialized()) return;
-
-        RNOneSignal.syncHashedEmail(email);
+    setLogLevel(consoleLevel, visualLogLevel) {
+        RNOneSignal.setLogLevel(consoleLevel, visualLogLevel);
     }
-
-    static setLogLevel(nsLogLevel, visualLogLevel) {
-      if (!checkIfInitialized()) return;
-
-        RNOneSignal.setLogLevel(nsLogLevel, visualLogLevel);
+    setRequiresUserPrivacyConsent(required) {
+        RNOneSignal.setRequiresUserPrivacyConsent(required);
     }
-    
-    static setRequiresUserPrivacyConsent(required) {
-      if (!checkIfInitialized()) return;
-
-       RNOneSignal.setRequiresUserPrivacyConsent(required);
+    provideUserPrivacyConsent(granted = true) {
+        RNOneSignal.provideUserConsent(granted);
     }
-
-    static provideUserConsent(granted) {
-      if (!checkIfInitialized()) return;
-
-       RNOneSignal.provideUserConsent(granted);
+    userProvidedPrivacyConsent() {
+        return RNOneSignal.userProvidedPrivacyConsent();
     }
-
-    static userProvidedPrivacyConsent() {
-      if (!checkIfInitialized()) return;
-
-       //returns a promise
-       return RNOneSignal.userProvidedPrivacyConsent();
+    presentAppNotificationSettings() {
+        if (react_native_1.Platform.OS == 'ios') {
+            RNOneSignal.presentAppSettings();
+        }
+        else {
+            this.onesignalLog(defines_1.OSLogLevel.warn, 'presentAppNotificationSettings() is only available in iOS.');
+        }
     }
-
 }
+/**
+ * Declares a singleton instance that represents OneSignal's React-Native SDK
+ */
+OneSignal.shared = new OneSignal();
+exports.OneSignal = OneSignal;

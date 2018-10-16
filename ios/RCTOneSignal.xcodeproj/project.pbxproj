@@ -17,6 +17,8 @@
 		CAADD42620B379070089D086 /* OneSignal.h in Headers */ = {isa = PBXBuildFile; fileRef = CAADD42520B379060089D086 /* OneSignal.h */; };
 		CAADD42720B3791A0089D086 /* OneSignal.h in Copy Headers */ = {isa = PBXBuildFile; fileRef = CAADD42520B379060089D086 /* OneSignal.h */; };
 		CACB39D6202D232A00D86CD1 /* RCTOneSignalEventEmitter.m in Sources */ = {isa = PBXBuildFile; fileRef = CACB39D5202D232A00D86CD1 /* RCTOneSignalEventEmitter.m */; };
+		CAEAB9D721768F4B00AE7AB2 /* RCTOneSignalCategories.m in Sources */ = {isa = PBXBuildFile; fileRef = CAEAB9D521768F4B00AE7AB2 /* RCTOneSignalCategories.m */; };
+		CAEAB9D821768F4B00AE7AB2 /* RCTOneSignalCategories.h in Headers */ = {isa = PBXBuildFile; fileRef = CAEAB9D621768F4B00AE7AB2 /* RCTOneSignalCategories.h */; };
 		FD2CCC851C772B4200B2B24E /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD2CCC841C772B4200B2B24E /* SystemConfiguration.framework */; };
 		FDB40CC41C5E4E5500CBF09B /* RCTOneSignal.m in Sources */ = {isa = PBXBuildFile; fileRef = FDB40CC31C5E4E5500CBF09B /* RCTOneSignal.m */; };
 /* End PBXBuildFile section */
@@ -46,6 +48,8 @@
 		CAADD42520B379060089D086 /* OneSignal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OneSignal.h; sourceTree = "<group>"; };
 		CACB39D4202D232A00D86CD1 /* RCTOneSignalEventEmitter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RCTOneSignalEventEmitter.h; sourceTree = "<group>"; };
 		CACB39D5202D232A00D86CD1 /* RCTOneSignalEventEmitter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RCTOneSignalEventEmitter.m; sourceTree = "<group>"; };
+		CAEAB9D521768F4B00AE7AB2 /* RCTOneSignalCategories.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RCTOneSignalCategories.m; sourceTree = "<group>"; };
+		CAEAB9D621768F4B00AE7AB2 /* RCTOneSignalCategories.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RCTOneSignalCategories.h; sourceTree = "<group>"; };
 		FD2CCC841C772B4200B2B24E /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/SystemConfiguration.framework; sourceTree = DEVELOPER_DIR; };
 		FDB40CC21C5E4E5500CBF09B /* RCTOneSignal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RCTOneSignal.h; sourceTree = "<group>"; };
 		FDB40CC31C5E4E5500CBF09B /* RCTOneSignal.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RCTOneSignal.m; sourceTree = "<group>"; };
@@ -91,6 +95,8 @@
 				CACB39D5202D232A00D86CD1 /* RCTOneSignalEventEmitter.m */,
 				CA1CC866200FE3C3005B66AA /* RCTOneSignalExtensionService.h */,
 				CA1CC867200FE3C3005B66AA /* RCTOneSignalExtensionService.m */,
+				CAEAB9D621768F4B00AE7AB2 /* RCTOneSignalCategories.h */,
+				CAEAB9D521768F4B00AE7AB2 /* RCTOneSignalCategories.m */,
 				CA63F32C20ACFD60009AE90F /* UIApplication+RCTOnesignal.m */,
 			);
 			path = RCTOneSignal;
@@ -113,6 +119,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CA3D8B582076D83C006F3572 /* RCTOneSignal.h in Headers */,
+				CAEAB9D821768F4B00AE7AB2 /* RCTOneSignalCategories.h in Headers */,
 				CAADD42620B379070089D086 /* OneSignal.h in Headers */,
 				CA3D8B592076D83C006F3572 /* RCTOneSignalExtensionService.h in Headers */,
 			);
@@ -179,6 +186,7 @@
 				CA63F32E20ACFD60009AE90F /* UIApplication+RCTOnesignal.m in Sources */,
 				CA1CC868200FE3C3005B66AA /* RCTOneSignalExtensionService.m in Sources */,
 				FDB40CC41C5E4E5500CBF09B /* RCTOneSignal.m in Sources */,
+				CAEAB9D721768F4B00AE7AB2 /* RCTOneSignalCategories.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
