@@ -1,21 +1,10 @@
-export declare enum OSLogLevel {
-    none = 0,
-    fatal = 1,
-    error = 2,
-    warn = 3,
-    info = 4,
-    debug = 5,
-    verbose = 6,
-}
-export declare enum OSNotificationActionType {
-    opened = 0,
-    actionTaken = 1,
-}
-export declare enum OSNotificationDisplayType {
-    none = 0,
-    alert = 1,
-    notification = 2,
-}
+import { OSLogLevel, OSNotificationDisplayType } from './defines';
+import { OSCreateNotification } from './create_notification';
+/** Publicly export enums defined in defines.ts */
+export { OSLogLevel, OSNotificationActionType, OSNotificationDisplayType, OSCreateNotificationBadgeType } from './defines';
+export { OSCreateNotification } from './create_notification';
+export { OSActionButton } from './notification_base';
+export { OSNotificationPayload, OSNotification } from './notification';
 export declare class OneSignal {
     /**
      * Declares a singleton instance that represents OneSignal's React-Native SDK
@@ -41,7 +30,10 @@ export declare class OneSignal {
      */
     private cachedEvents;
     constructor();
-    private addListener(event, handler);
+    private addPrivateObserver(event, handler);
+    private addObserver(event, handler);
+    private fireObservers<T>(event, object);
+    private setupObservers();
     private onesignalLog(level, message);
     /**
      * Adds an observer that fires whenever a notification is received.
@@ -113,7 +105,7 @@ export declare class OneSignal {
     setSubscription(enabled: Boolean): void;
     promptLocation(): void;
     setInFocusDisplayType(type: OSNotificationDisplayType): void;
-    postNotification(notification: Object, callback?: Function): void;
+    postNotification(notification: OSCreateNotification, callback?: Function): void;
     clearOneSignalAndroidNotifications(): void;
     cancelAndroidNotification(notificationId: Number): void;
     setLogLevel(consoleLevel: OSLogLevel, visualLogLevel: OSLogLevel): void;

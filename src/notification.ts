@@ -1,180 +1,97 @@
-import { OSCreateNotificationBadgeType, OSCreateNotificationDelayOption } from './defines';
-import { OneSignal } from './index';
+import { OSActionButton, OSNotificationBase } from './notification_base';
+import { OSCreateNotification } from './create_notification';
+import { OSNotificationDisplayType, OSNotificationActionType } from './defines';
 
-export class OSActionButton {
-   /** The custom identifier for this button/action */
-   public id : String;
-
-   /** The title for the button */
-   public title : String;
-
-   /** Android only - the URL/filename for the icon */
-   public icon? : String;
-
-   /** constructor function */
-   public constructor(id : String, title : String, icon?: String) {
-      this.id = id;
-      this.title = title;
-   }
-   
-   public jsonRepresentation() : any {
-      return {
-         'id' : this.id,
-         'title' : this.title,
-         'icon' : this.icon
-      };
-   }
-}
-
-export class OSCreateNotification {
-   /** 
-    * The App ID that the recipient playerIds are registered with 
-    * (usually - your app's appId) 
-    */
-   public appId : String;
-
-   /** An array of user ID's that should receive this notification */
-   public playerIds = Array<String>();
-
-   /** The notification's content (excluding title) */
-   public content? : String;
-
-   /** 
-    * The language code (ie. "en" for English) for this notification
-    * defaults to "en" (English)
-    */
-   public language? : String;
-
-   /** The title/heading for the notification */
-   public heading? : String;
-
-   /** The subtitle for the notification (iOS 10+ only) */   
-   public subtitle? : String;
-
-   /** Tells the app to launch in the background (iOS only) */
-   public contentAvailable? : Boolean;
-
-   /** 
-    * Tells the app to launch the Notification Service extension,
-    * which can mutate your notification (ie. download attachments)
-    */
-   public mutableContent? : Boolean;
-
-   /** Additional data you wish to send with the notification */
-   public additionalData? : Object;
-
-   /** The URL to open when the user taps the notification */
-   public url? : String;
-
+export class OSNotificationAction {
    /**
-    * Media (images, videos, etc.) for iOS. Maps a custom
-    * ID to a resource URL in the format {'id' : 'https://.....'}
+    * Indicates if the notification was "opened", or if
+    * a specific action button was pressed "actionTaken"
     */
-   public iosAttachments? : Map<String, String>;
+   public type: OSNotificationActionType;
 
-   /** An image to use as the big picture (android only) */
-   public bigPicture? : String;
+   /** If a button was pressed, this will be the button/action ID */
+   public actionId: String;
 
-   /** A list of buttons to attach to the notification */
-   public buttons? : Array<OSActionButton>;
+   public constructor(nativeJson : any) {
+      this.type = nativeJson.type;
 
-   /** 
-    * The category identifier for iOS (controls various aspects
-    * of the notification, for example, whether to launch a
-    * Notification Content Extension) (iOS only)
-    */
-   public iosCategory? : String;
-
-   /** The sound to play (iOS only) */
-   public iosSound? : String;
-
-   /** The sound to play (Android only) */
-   public androidSound? : String;
-
-   /** 
-    * A small icon (Android only) 
-    * Can be a drawable resource name or a URL
-   */
-   public androidSmallIcon? : String;
-
-   /** 
-    * A large icon (Android only) 
-    * Can be a drawable resource name or a URL
-   */
-   public androidLargeIcon? : String;
-
-   /** The Android Oreo Notification Category to send the notification under */
-   public androidChannelId? : String;
-
-   /** 
-    * Controls if the badge count number overrides the existing badge
-    * count (set), or if it is added to the existing count (increase).
-    * To decrease, use "increase" with a negative badgeCount
-    */
-   public iosBadgeType? : OSCreateNotificationBadgeType;
-
-   /** 
-    * The actual badge count to either set to directly, or increment by
-    * To decrement the user's badge count, send a negative value
-    */
-   public iosBadgeCount? : Number;
-
-   /** 
-    * If multiple notifications have the same collapse ID, only the most
-    * recent notification will be shown. (For iOS 12+ thread ID is preferred)
-    */
-   public collapseId? : String;
-
-   /** Allows you to send a notification at a specific date */
-   public sendAfter? : Date;
-
-   /** Allows you to control how the notification is delayed */
-   public delayOption? : OSCreateNotificationDelayOption;
-
-   /** 
-    * Used in conjunction with delayedOption == timezone, lets you specify what  
-    * time of day each user should receive the notification, ie. "9:00 AM"
-    */
-   public deliveryTimeOfDay? : String;
-   
-   
-   public constructor(notificationAppId : String) {
-      this.appId = notificationAppId;
-   }
-   
-   public build() : any {
-      var json = { 
-         'app_id' : this.appId,
-         'include_player_ids' : this.playerIds
-      } as any;
-
-      var lang = this.language || "en";
-      
-      if (this.content) json.contents = { [lang] : this.content }
-      if (this.heading) json.headings = { [lang] : this.heading }
-      if (this.subtitle) json.subtitle = { [lang] : this.subtitle }
-      if (this.contentAvailable) json.content_available = this.contentAvailable
-      if (this.mutableContent) json.mutable_content = this.mutableContent;
-      if (this.additionalData) json.data = this.additionalData;
-      if (this.url) json.url = this.url;
-      if (this.iosAttachments) json.ios_attachments = this.iosAttachments;
-      if (this.bigPicture) json.big_picture = this.bigPicture;
-      if (this.iosCategory) json.ios_category = this.iosCategory;
-      if (this.iosSound) json.ios_sound = this.iosSound;
-      if (this.androidSound) json.android_sound = this.androidSound;
-      if (this.androidSmallIcon) json.small_icon = this.androidSmallIcon;
-      if (this.androidLargeIcon) json.large_icon = this.androidLargeIcon;
-      if (this.androidChannelId) json.android_channel_id = this.androidChannelId;
-      if (this.iosBadgeCount) json.ios_badgeCount = this.iosBadgeCount;
-      if (this.collapseId) json.collapse_id = this.collapseId;
-      if (this.deliveryTimeOfDay) json.delivery_time_of_day = this.deliveryTimeOfDay;
-      if (this.iosBadgeType) json.ios_badgeType = this.iosBadgeType;
-      if (this.delayOption) json.delay_option = this.delayOption;
-      if (this.buttons) json.buttons = this.buttons.map(button => {
-         return button.jsonRepresentation();
-      });
-
-      return json;
+      this.actionId = nativeJson.id;
    }
 }
 
+export class OSNotificationPayload extends OSNotificationBase {
+   /** The OneSignal Notification ID */
+   public notificationId? : String;
+
+   /** 
+    * The name of the template used to create 
+    * this notification (if applicable)
+    */
+   public templateName? : String;
+
+   /** 
+    * The ID of the template used to create
+    * this notification (if applicable)
+    */
+   public templateId? : String;
+
+   /** The badge count */
+   public badgeCount? : Number;
+
+   /** 
+    * The badge increment - if the existing badge count
+    * is being incremented (ie. +1) this is used instead
+    * of the 'badgeCount' parameter
+    */
+   public iosBadgeIncrement? : Number;
+
+   /** The sound played for this notification */
+   public sound? : String;
+
+   /** The raw notification payload */
+   public rawPayload? : any;
+
+   public constructor(nativeJson : any) {
+      super(nativeJson);
+      
+      if (nativeJson.notificationID) this.notificationId = nativeJson.notificationID;
+      if (nativeJson.templateName) this.templateName = nativeJson.templateName;
+      if (nativeJson.templateID) this.templateId = nativeJson.templateID;
+      if (nativeJson.badge) this.badgeCount = nativeJson.badge;
+      if (nativeJson.badgeIncrement) this.iosBadgeIncrement = nativeJson.badgeIncrement;
+      if (nativeJson.sound) this.sound = nativeJson.sound;
+      if (nativeJson.rawPayload) this.rawPayload = nativeJson.rawPayload;
+   }
+}
+
+export class OSNotification {
+   public payload : OSNotificationPayload;
+
+   public displayType : OSNotificationDisplayType;
+
+   public shown : Boolean;
+
+   public appInFocus : Boolean;
+
+   public silent : Boolean;
+
+   constructor(nativeJson : any) {
+      this.payload = new OSNotificationPayload(nativeJson);
+      this.displayType = nativeJson.displayType;
+      this.shown = nativeJson.shown;
+      this.appInFocus = nativeJson.appInFocus;
+      this.silent = nativeJson.silent;
+   }
+}
+
+export class OSNotificationOpenedResult {
+   public notification : OSNotification;
+
+   public actionType? : OSNotificationActionType;
+   
+   public constructor(nativeJson : any) {
+      this.notification = new OSNotification(nativeJson.notification);
+
+      this.actionType = nativeJson.type;
+   }
+}

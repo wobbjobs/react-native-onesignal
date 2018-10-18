@@ -1,11 +1,15 @@
 import { NativeModules, NativeEventEmitter, NetInfo, Platform, NativeModulesStatic, EmitterSubscription } from 'react-native';
 import invariant from 'invariant';
 import { OSEvent, OSLogLevel, OSNotificationDisplayType, OSNotificationActionType, Events } from './defines';
-import { OSActionButton, OSCreateNotification } from './notification';
+import { OSActionButton } from './notification_base';
+import { OSCreateNotification } from './create_notification';
+import { OSNotificationPayload, OSNotification, OSNotificationOpenedResult } from './notification';
 
 /** Publicly export enums defined in defines.ts */
 export { OSLogLevel, OSNotificationActionType, OSNotificationDisplayType, OSCreateNotificationBadgeType } from './defines';
-export { OSCreateNotification, OSActionButton } from './notification';
+export { OSCreateNotification } from './create_notification';
+export { OSActionButton } from './notification_base';
+export { OSNotificationPayload, OSNotification } from './notification';
 
 /** Define the native module */
 const RNOneSignal = NativeModules.OneSignal;
@@ -42,49 +46,69 @@ export class OneSignal {
    constructor() {
       this.eventEmitter = new NativeEventEmitter(RNOneSignal);
          
-      Events.forEach(event => {
-         this.cachedEvents.set(event, []);
-
-         this.listeners.set(event, this.eventEmitter.addListener(event, notification => {
-            let handlers = this.eventSubscribers.get(event);
-            
-            if (handlers && handlers.length > 0) {
-               handlers.forEach(handler => {
-                  handler(notification);
-               });
-            } else {
-               var existing = this.cachedEvents.get(event);
-
-               if (existing) {
-                  existing.push(notification);
-                  this.cachedEvents.set(event, existing);
-               } else {
-                  this.cachedEvents.set(event, [notification])
-               }
-            }
-         }))
-      });
+      this.setupObservers();
+   }
+   
+   private addPrivateObserver(event: string, handler: Function) {
+      this.listeners.set(event, this.eventEmitter.addListener(event, object => {
+         handler(object);
+      }));
    }
 
-   private addListener(event : String, handler : Function) {
-      var existingListeners = this.eventSubscribers.get(event);
-      
-      if (existingListeners) {
-         existingListeners.push(handler);
-         this.eventSubscribers.set(event, existingListeners);
+   private addObserver(event: string, handler : Function) {
+      let eventObservers = this.eventSubscribers.get(event);
+
+      if (eventObservers && eventObservers.length > 0) {
+         eventObservers.push(handler);
+         this.eventSubscribers.set(event, eventObservers);
       } else {
          this.eventSubscribers.set(event, [handler]);
       }
+   }
 
-      var cached = this.cachedEvents.get(event);
+   private fireObservers<T>(event: String, object : T) {
+      let handlers = this.eventSubscribers.get(event);
 
-      if (cached && cached.length > 0) {
-         cached.forEach(notification => {
-            handler(notification);
+      if (handlers && handlers.length > 0) {
+         handlers.forEach(handler => {
+            handler(object);
          });
-      }
+      } else {
+         var existing = this.cachedEvents.get(event);
 
-      this.cachedEvents.delete(event);
+         if (existing) {
+            existing.push(object);
+            this.cachedEvents.set(event, existing);
+         } else {
+            this.cachedEvents.set(event, [object]);
+         }
+      }
+   }
+   
+   private setupObservers() {
+      this.addPrivateObserver(OSEvent.received, object => {
+         let notification = new OSNotification(object);
+
+         this.fireObservers(OSEvent.received, notification);
+      });
+
+      this.addPrivateObserver(OSEvent.opened, object => {
+         let result = new OSNotificationOpenedResult(object);
+
+         this.fireObservers(OSEvent.opened, result);
+      });
+
+      this.addPrivateObserver(OSEvent.subscription, object => {
+
+      });
+
+      this.addPrivateObserver(OSEvent.permission, object => {
+
+      });
+
+      this.addPrivateObserver(OSEvent.emailSubscription, object => {
+
+      });
    }
 
    private onesignalLog(level : OSLogLevel, message : String) {
@@ -99,7 +123,7 @@ export class OneSignal {
     * is received.
     */
    public addNotificationReceivedObserver(handler : Function) {
-      this.addListener(OSEvent.received, handler);
+      this.addObserver(OSEvent.received, handler);
    }
 
    /**
@@ -109,7 +133,7 @@ export class OneSignal {
     * notification is opened
     */
    public addNotificationOpenedObserver(handler : Function) {
-      this.addListener(OSEvent.opened, handler);
+      this.addObserver(OSEvent.opened, handler);
    }
 
    /**
@@ -121,7 +145,7 @@ export class OneSignal {
     * user's push notification subscription state changes.
     */
    public addSubscriptionObserver(handler : Function) {
-      this.addListener(OSEvent.subscription, handler);
+      this.addObserver(OSEvent.subscription, handler);
    }
 
    /**
@@ -131,7 +155,7 @@ export class OneSignal {
     * @param handler The callback/function that fires when permission changes.
     */
    public addPermissionObserver(handler : Function) {
-      this.addListener(OSEvent.permission, handler);
+      this.addObserver(OSEvent.permission, handler);
    }
 
    /**
@@ -143,7 +167,7 @@ export class OneSignal {
     * state changes.
     */
    public addEmailSubscriptionObserver(handler : Function) {
-      this.addListener(OSEvent.emailSubscription, handler);
+      this.addObserver(OSEvent.emailSubscription, handler);
    }
 
    /**
@@ -181,7 +205,6 @@ export class OneSignal {
    }
 
    public getPermissionSubscriptionState(callback? : Function) {
-      console.log("Getting permission subscription state");
       RNOneSignal.getPermissionSubscriptionState(callback || function(){});
    }
 
@@ -242,8 +265,6 @@ export class OneSignal {
    }
 
    public postNotification(notification : OSCreateNotification, callback? : Function) {
-      console.log("notification:");
-      console.log(notification);
       RNOneSignal.postNotification(notification.build(), callback || function(){});
    }
 

@@ -2,15 +2,20 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const react_native_1 = require("react-native");
 const defines_1 = require("./defines");
+const notification_1 = require("./notification");
 /** Publicly export enums defined in defines.ts */
 var defines_2 = require("./defines");
 exports.OSLogLevel = defines_2.OSLogLevel;
 exports.OSNotificationActionType = defines_2.OSNotificationActionType;
 exports.OSNotificationDisplayType = defines_2.OSNotificationDisplayType;
 exports.OSCreateNotificationBadgeType = defines_2.OSCreateNotificationBadgeType;
-var notification_1 = require("./notification");
-exports.OSCreateNotification = notification_1.OSCreateNotification;
-exports.OSActionButton = notification_1.OSActionButton;
+var create_notification_1 = require("./create_notification");
+exports.OSCreateNotification = create_notification_1.OSCreateNotification;
+var notification_base_1 = require("./notification_base");
+exports.OSActionButton = notification_base_1.OSActionButton;
+var notification_2 = require("./notification");
+exports.OSNotificationPayload = notification_2.OSNotificationPayload;
+exports.OSNotification = notification_2.OSNotification;
 /** Define the native module */
 const RNOneSignal = react_native_1.NativeModules.OneSignal;
 class OneSignal {
@@ -30,44 +35,56 @@ class OneSignal {
          */
         this.cachedEvents = new Map();
         this.eventEmitter = new react_native_1.NativeEventEmitter(RNOneSignal);
-        defines_1.Events.forEach(event => {
-            this.cachedEvents.set(event, []);
-            this.listeners.set(event, this.eventEmitter.addListener(event, notification => {
-                let handlers = this.eventSubscribers.get(event);
-                if (handlers && handlers.length > 0) {
-                    handlers.forEach(handler => {
-                        handler(notification);
-                    });
-                }
-                else {
-                    var existing = this.cachedEvents.get(event);
-                    if (existing) {
-                        existing.push(notification);
-                        this.cachedEvents.set(event, existing);
-                    }
-                    else {
-                        this.cachedEvents.set(event, [notification]);
-                    }
-                }
-            }));
-        });
+        this.setupObservers();
     }
-    addListener(event, handler) {
-        var existingListeners = this.eventSubscribers.get(event);
-        if (existingListeners) {
-            existingListeners.push(handler);
-            this.eventSubscribers.set(event, existingListeners);
+    addPrivateObserver(event, handler) {
+        this.listeners.set(event, this.eventEmitter.addListener(event, object => {
+            handler(object);
+        }));
+    }
+    addObserver(event, handler) {
+        let eventObservers = this.eventSubscribers.get(event);
+        if (eventObservers && eventObservers.length > 0) {
+            eventObservers.push(handler);
+            this.eventSubscribers.set(event, eventObservers);
         }
         else {
             this.eventSubscribers.set(event, [handler]);
         }
-        var cached = this.cachedEvents.get(event);
-        if (cached && cached.length > 0) {
-            cached.forEach(notification => {
-                handler(notification);
+    }
+    fireObservers(event, object) {
+        let handlers = this.eventSubscribers.get(event);
+        if (handlers && handlers.length > 0) {
+            handlers.forEach(handler => {
+                handler(object);
             });
         }
-        this.cachedEvents.delete(event);
+        else {
+            var existing = this.cachedEvents.get(event);
+            if (existing) {
+                existing.push(object);
+                this.cachedEvents.set(event, existing);
+            }
+            else {
+                this.cachedEvents.set(event, [object]);
+            }
+        }
+    }
+    setupObservers() {
+        this.addPrivateObserver(defines_1.OSEvent.received, object => {
+            let notification = new notification_1.OSNotification(object);
+            this.fireObservers(defines_1.OSEvent.received, notification);
+        });
+        this.addPrivateObserver(defines_1.OSEvent.opened, object => {
+            let result = new notification_1.OSNotificationOpenedResult(object);
+            this.fireObservers(defines_1.OSEvent.opened, result);
+        });
+        this.addPrivateObserver(defines_1.OSEvent.subscription, object => {
+        });
+        this.addPrivateObserver(defines_1.OSEvent.permission, object => {
+        });
+        this.addPrivateObserver(defines_1.OSEvent.emailSubscription, object => {
+        });
     }
     onesignalLog(level, message) {
         RNOneSignal.log(level, message);
@@ -80,7 +97,7 @@ class OneSignal {
      * is received.
      */
     addNotificationReceivedObserver(handler) {
-        this.addListener(defines_1.OSEvent.received, handler);
+        this.addObserver(defines_1.OSEvent.received, handler);
     }
     /**
      * Adds an observer that fires when a notification is opened.
@@ -89,7 +106,7 @@ class OneSignal {
      * notification is opened
      */
     addNotificationOpenedObserver(handler) {
-        this.addListener(defines_1.OSEvent.opened, handler);
+        this.addObserver(defines_1.OSEvent.opened, handler);
     }
     /**
      * This observer fires whenever the user's push notification subscription
@@ -100,7 +117,7 @@ class OneSignal {
      * user's push notification subscription state changes.
      */
     addSubscriptionObserver(handler) {
-        this.addListener(defines_1.OSEvent.subscription, handler);
+        this.addObserver(defines_1.OSEvent.subscription, handler);
     }
     /**
      * This observer fires when the user's push permission changes. For example,
@@ -109,7 +126,7 @@ class OneSignal {
      * @param handler The callback/function that fires when permission changes.
      */
     addPermissionObserver(handler) {
-        this.addListener(defines_1.OSEvent.permission, handler);
+        this.addObserver(defines_1.OSEvent.permission, handler);
     }
     /**
      * This observer fires when the user's email subscription state changes. For
@@ -120,7 +137,7 @@ class OneSignal {
      * state changes.
      */
     addEmailSubscriptionObserver(handler) {
-        this.addListener(defines_1.OSEvent.emailSubscription, handler);
+        this.addObserver(defines_1.OSEvent.emailSubscription, handler);
     }
     /**
      * Clears all event observers/listeners
