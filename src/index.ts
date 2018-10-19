@@ -4,6 +4,7 @@ import { OSEvent, OSLogLevel, OSNotificationDisplayType, OSNotificationActionTyp
 import { OSActionButton } from './notification_base';
 import { OSCreateNotification } from './create_notification';
 import { OSNotificationPayload, OSNotification, OSNotificationOpenedResult } from './notification';
+import { OSSubscriptionState, OSEmailSubscriptionState, OSSubscriptionStateChanges, OSEmailSubscriptionStateChanges } from './subscription';
 
 /** Publicly export enums defined in defines.ts */
 export { OSLogLevel, OSNotificationActionType, OSNotificationDisplayType, OSCreateNotificationBadgeType } from './defines';
@@ -99,11 +100,15 @@ export class OneSignal {
       });
 
       this.addPrivateObserver(OSEvent.subscription, object => {
+         let changes = new OSSubscriptionStateChanges(object);
 
+         this.fireObservers(OSEvent.subscription, changes);
       });
 
       this.addPrivateObserver(OSEvent.permission, object => {
+         let changes = new OSEmailSubscriptionStateChanges(object);
 
+         this.fireObservers(OSEvent.emailSubscription, changes);
       });
 
       this.addPrivateObserver(OSEvent.emailSubscription, object => {

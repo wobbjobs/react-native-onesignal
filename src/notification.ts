@@ -76,7 +76,7 @@ export class OSNotification {
    public silent : Boolean;
 
    constructor(nativeJson : any) {
-      this.payload = new OSNotificationPayload(nativeJson);
+      this.payload = new OSNotificationPayload(nativeJson.payload);
       this.displayType = nativeJson.displayType;
       this.shown = nativeJson.shown;
       this.appInFocus = nativeJson.appInFocus;

@@ -10,22 +10,20 @@ class OSNotificationAction {
 exports.OSNotificationAction = OSNotificationAction;
 class OSNotificationPayload extends notification_base_1.OSNotificationBase {
     constructor(nativeJson) {
-        console.log("Constructing notification from json: ");
-        console.log(nativeJson);
         super(nativeJson);
-        if (nativeJson.hasOwnProperty('notificationID'))
+        if (nativeJson.notificationID)
             this.notificationId = nativeJson.notificationID;
-        if (nativeJson.hasOwnProperty('templateName'))
+        if (nativeJson.templateName)
             this.templateName = nativeJson.templateName;
-        if (nativeJson.hasOwnProperty('templateID'))
+        if (nativeJson.templateID)
             this.templateId = nativeJson.templateID;
-        if (nativeJson.hasOwnProperty('badge'))
+        if (nativeJson.badge)
             this.badgeCount = nativeJson.badge;
-        if (nativeJson.hasOwnProperty('badgeIncrement'))
+        if (nativeJson.badgeIncrement)
             this.iosBadgeIncrement = nativeJson.badgeIncrement;
-        if (nativeJson.hasOwnProperty('sound'))
+        if (nativeJson.sound)
             this.sound = nativeJson.sound;
-        if (nativeJson.hasOwnProperty('rawPayload'))
+        if (nativeJson.rawPayload)
             this.rawPayload = nativeJson.rawPayload;
     }
 }

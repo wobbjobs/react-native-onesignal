@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const react_native_1 = require("react-native");
 const defines_1 = require("./defines");
 const notification_1 = require("./notification");
+const subscription_1 = require("./subscription");
 /** Publicly export enums defined in defines.ts */
 var defines_2 = require("./defines");
 exports.OSLogLevel = defines_2.OSLogLevel;
@@ -80,8 +81,12 @@ class OneSignal {
             this.fireObservers(defines_1.OSEvent.opened, result);
         });
         this.addPrivateObserver(defines_1.OSEvent.subscription, object => {
+            let changes = new subscription_1.OSSubscriptionStateChanges(object);
+            this.fireObservers(defines_1.OSEvent.subscription, changes);
         });
         this.addPrivateObserver(defines_1.OSEvent.permission, object => {
+            let changes = new subscription_1.OSEmailSubscriptionStateChanges(object);
+            this.fireObservers(defines_1.OSEvent.emailSubscription, changes);
         });
         this.addPrivateObserver(defines_1.OSEvent.emailSubscription, object => {
         });
@@ -173,7 +178,6 @@ class OneSignal {
         }
     }
     getPermissionSubscriptionState(callback) {
-        console.log("Getting permission subscription state");
         RNOneSignal.getPermissionSubscriptionState(callback || function () { });
     }
     sendTag(key, value, callback) {
@@ -223,8 +227,6 @@ class OneSignal {
         RNOneSignal.setInFocusDisplayType(type);
     }
     postNotification(notification, callback) {
-        console.log("notification:");
-        console.log(notification);
         RNOneSignal.postNotification(notification.build(), callback || function () { });
     }
     clearOneSignalAndroidNotifications() {
