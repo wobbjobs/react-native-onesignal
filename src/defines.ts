@@ -17,6 +17,13 @@ export enum OSLogLevel {
    verbose,
 }
 
+export enum OSNotificationPermission {
+   notDetermined = 0,
+   denied,
+   authorized,
+   provisional
+}
+
 export enum OSNotificationActionType {
    opened = 0,
    actionTaken,

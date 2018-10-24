@@ -1,6 +1,8 @@
 package com.geektime.rnonesignalandroid;
 
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -24,13 +26,26 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.bridge.Promise;
+import com.onesignal.OSEmailSubscriptionStateChanges;
+import com.onesignal.OSNotification;
 import com.onesignal.OSPermissionState;
+import com.onesignal.OSPermissionStateChanges;
 import com.onesignal.OSPermissionSubscriptionState;
 import com.onesignal.OSSubscriptionState;
 import com.onesignal.OSEmailSubscriptionState;
+import com.onesignal.OSSubscriptionObserver;
+import com.onesignal.OSEmailSubscriptionObserver;
+import com.onesignal.OSPermissionObserver;
+import com.onesignal.OSNotificationOpenResult;
+import com.onesignal.OSSubscriptionStateChanges;
 import com.onesignal.OneSignal;
 import com.onesignal.OneSignal.EmailUpdateHandler;
 import com.onesignal.OneSignal.EmailUpdateError;
+import com.onesignal.OneSignal.NotificationOpenedHandler;
+import com.onesignal.OneSignal.NotificationReceivedHandler;
+import com.onesignal.OneSignal.LOG_LEVEL;
+import com.onesignal.OneSignal.ChangeTagsUpdateHandler;
+import com.onesignal.OneSignal.SendTagsError;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -40,7 +55,7 @@ import org.json.JSONException;
 /**
 * Created by Avishay on 1/31/16.
 */
-public class RNOneSignal extends ReactContextBaseJavaModule implements LifecycleEventListener {
+public class RNOneSignal extends ReactContextBaseJavaModule implements LifecycleEventListener, NotificationReceivedHandler, NotificationOpenedHandler, OSSubscriptionObserver, OSEmailSubscriptionObserver, OSPermissionObserver {
    public static final String NOTIFICATION_OPENED_INTENT_FILTER = "GTNotificationOpened";
    public static final String NOTIFICATION_RECEIVED_INTENT_FILTER = "GTNotificationReceived";
    public static final String HIDDEN_MESSAGE_KEY = "hidden";
@@ -49,6 +64,11 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
    private ReactContext mReactContext;
    private boolean oneSignalInitDone;
    private boolean registeredEvents = false;
+
+   private OSNotificationOpenResult coldStartNotificationResult;
+   private boolean setNotificationOpenedHandler = false;
+   private boolean didSetRequiresPrivacyConsent = false;
+   private boolean waitingForUserPrivacyConsent = false;
 
    //ensure only one callback exists at a given time due to react-native restriction
    private Callback pendingGetTagsCallback;
@@ -79,21 +99,14 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
    // This will normally succeed when onHostResume fires instead.
    private void initOneSignal() {
       // Uncomment to debug init issues.
-      // OneSignal.setLogLevel(OneSignal.LOG_LEVEL.VERBOSE, OneSignal.LOG_LEVEL.ERROR);
-
-      if (!registeredEvents) {
-         registeredEvents = true;
-         registerNotificationsOpenedNotification();
-         registerNotificationsReceivedNotification();
-      }
+      // OneSignal.setLogLevel(LOG_LEVEL.VERBOSE, LOG_LEVEL.ERROR);
 
       OneSignal.sdkType = "react";
 
       String appId = appIdFromManifest(mReactApplicationContext);
 
-      if (appId != null && appId.length() > 0) {
-         init(appId);
-      }
+      if (appId != null && appId.length() > 0)
+         this.init(appId);
    }
 
    private void sendEvent(String eventName, Object params) {
@@ -104,6 +117,35 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
 
    private JSONObject jsonFromErrorMessageString(String errorMessage) throws JSONException {
       return new JSONObject().put("error", errorMessage);
+   }
+
+  private void addObservers() {
+      OneSignal.addSubscriptionObserver(this);
+      OneSignal.addEmailSubscriptionObserver(this);
+      OneSignal.addPermissionObserver(this);
+  }
+
+  private LOG_LEVEL getLogLevel(int level) {
+      switch(level) {
+         case 0:
+            return LOG_LEVEL.NONE;
+         case 1:
+            return LOG_LEVEL.FATAL;
+         case 2:
+            return LOG_LEVEL.ERROR;
+         case 3:
+               return LOG_LEVEL.WARN;
+         case 4:
+               return LOG_LEVEL.INFO;
+         case 5:
+               return LOG_LEVEL.DEBUG;
+         case 6:
+               return LOG_LEVEL.VERBOSE;
+      }
+
+      if (level < 0)
+         return LOG_LEVEL.NONE;
+      return LOG_LEVEL.VERBOSE;
    }
 
    @ReactMethod 
@@ -125,22 +167,40 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
          context = mReactApplicationContext.getApplicationContext();
       }
 
-      OneSignal.init(context,
-              null,
-              appId,
-              new NotificationOpenedHandler(mReactContext),
-              new NotificationReceivedHandler(mReactContext)
-      );
+      OneSignal.init(context, null, appId, this, this);
+
+      if (this.didSetRequiresPrivacyConsent)
+         this.waitingForUserPrivacyConsent = true;
+      else
+         this.addObservers();
    }
 
    @ReactMethod
-   public void sendTag(String key, String value) {
-      OneSignal.sendTag(key, value);
-   }
+   public void sendTags(ReadableMap tags, final Callback callback) {
+       Log.d("onesignal", "SENDING TAGS: " + tags.toString());
+      OneSignal.sendTags(RNUtils.readableMapToJson(tags), new ChangeTagsUpdateHandler() {
+          boolean called = false;
 
-   @ReactMethod
-   public void sendTags(ReadableMap tags) {
-      OneSignal.sendTags(RNUtils.readableMapToJson(tags));
+          @Override
+          public void onSuccess(JSONObject tags) {
+            if (callback != null && called == false) {
+                called = true;
+               callback.invoke(RNUtils.jsonToWritableMap(tags));
+            }
+          }
+
+          @Override
+          public void onFailure(SendTagsError error) {
+              try {
+                  if (callback != null && called == false) {
+                      called = true;
+                      callback.invoke(RNUtils.jsonToWritableMap(jsonFromErrorMessageString(error.getMessage())));
+                  }
+              } catch (JSONException exception) {
+                  exception.printStackTrace();
+              }
+          }
+      });
    }
 
    @ReactMethod
@@ -217,60 +277,17 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
    }
 
    @ReactMethod
-   public void configure() {
-      OneSignal.idsAvailable(new OneSignal.IdsAvailableHandler() {
-         public void idsAvailable(String userId, String registrationId) {
-               final WritableMap params = Arguments.createMap();
-
-               params.putString("userId", userId);
-               params.putString("pushToken", registrationId);
-
-               sendEvent("OneSignal-idsAvailable", params);
-         }
-      });
-   }
-
-   @ReactMethod
    public void getPermissionSubscriptionState(final Callback callback) {
       OSPermissionSubscriptionState state = OneSignal.getPermissionSubscriptionState();
 
       if (state == null)
          return;
 
-      OSPermissionState permissionState = state.getPermissionStatus();
-      OSSubscriptionState subscriptionState = state.getSubscriptionStatus();
-      OSEmailSubscriptionState emailSubscriptionState = state.getEmailSubscriptionStatus();
-
-      // Notifications enabled for app? (Android Settings)
-      boolean notificationsEnabled = permissionState.getEnabled();
-
-      // User subscribed to OneSignal? (automatically toggles with notificationsEnabled)
-      boolean subscriptionEnabled = subscriptionState.getSubscribed();
-
-      // User's original subscription preference (regardless of notificationsEnabled)
-      boolean userSubscriptionEnabled = subscriptionState.getUserSubscriptionSetting();
-
-      try {
-         JSONObject result = new JSONObject();
-
-         result.put("notificationsEnabled", String.valueOf(notificationsEnabled))
-                 .put("subscriptionEnabled", String.valueOf(subscriptionEnabled))
-                 .put("userSubscriptionEnabled", String.valueOf(userSubscriptionEnabled))
-                 .put("pushToken", subscriptionState.getPushToken())
-                 .put("userId", subscriptionState.getUserId())
-                 .put("emailUserId", emailSubscriptionState.getEmailUserId())
-                 .put("emailAddress", emailSubscriptionState.getEmailAddress());
-
-         Log.d("onesignal", "permission subscription state: " + result.toString());
-
-         callback.invoke(RNUtils.jsonToWritableMap(result));
-      } catch (JSONException e) {
-         e.printStackTrace();
-      }
+      callback.invoke(OneSignalSerializer.convertPermissionSubscriptionStateToMap(state));
    }
 
    @ReactMethod
-   public void inFocusDisplaying(int displayOption) {
+   public void setInFocusDisplayType(int displayOption) {
       OneSignal.setInFocusDisplaying(displayOption);
    }
 
@@ -315,53 +332,31 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
    }
 
    @ReactMethod
-   public void postNotification(String contents, String data, String playerId, String otherParameters) {
-      try {
-         JSONObject postNotification = new JSONObject();
-         postNotification.put("contents", new JSONObject(contents));
+   public void postNotification(ReadableMap notification, final Callback callback) {
+      JSONObject notificationJson = RNUtils.readableMapToJson(notification);
 
-         if (playerId != null) {
-            JSONArray playerIds = new JSONArray();
-            playerIds.put(playerId);
-            postNotification.put("include_player_ids", playerIds);
-         }
-
-         if (data != null) {
-            JSONObject additionalData = new JSONObject();
-            additionalData.put("p2p_notification", new JSONObject(data));
-            postNotification.put("data", additionalData);
-         }
-
-         if (otherParameters != null && !otherParameters.trim().isEmpty()) {
-               JSONObject parametersJson = new JSONObject(otherParameters.trim());
-               Iterator<String> keys = parametersJson.keys();
-               while (keys.hasNext()) {
-                  String key = keys.next();
-                  postNotification.put(key, parametersJson.get(key));
-               }
-
-               if (parametersJson.has(HIDDEN_MESSAGE_KEY) && parametersJson.getBoolean(HIDDEN_MESSAGE_KEY)) {
-                  postNotification.getJSONObject("data").put(HIDDEN_MESSAGE_KEY, true);
-               }
-         }
-
-         OneSignal.postNotification(
-               postNotification,
-               new OneSignal.PostNotificationResponseHandler() {
-                  @Override
-                  public void onSuccess(JSONObject response) {
-                     Log.i("OneSignal", "postNotification Success: " + response.toString());
-                  }
-
-                  @Override
-                  public void onFailure(JSONObject response) {
-                     Log.e("OneSignal", "postNotification Failure: " + response.toString());
+      OneSignal.postNotification(
+            notificationJson,
+            new OneSignal.PostNotificationResponseHandler() {
+               @Override
+               public void onSuccess(JSONObject response) {
+                  try {
+                      if (callback != null) {
+                          callback.invoke(OneSignalSerializer.convertJSONObjectToHashMap(response));
+                      }
+                  } catch (JSONException e) {
+                      Log.e("onesignal", "Encountered an error attempting to convert PostNotification response to hashmap");
                   }
                }
-         );
-      } catch (JSONException e) {
-         e.printStackTrace();
-      }
+
+               @Override
+               public void onFailure(JSONObject response) {
+                  if (callback != null) {
+                     callback.invoke(RNUtils.jsonToWritableMap(response));
+                  }
+               }
+            }
+      );
    }
 
    @ReactMethod
@@ -377,11 +372,18 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
    @ReactMethod
    public void setRequiresUserPrivacyConsent(Boolean required) {
       OneSignal.setRequiresUserPrivacyConsent(required);
+      this.didSetRequiresPrivacyConsent = required;
    }
 
    @ReactMethod 
    public void provideUserConsent(Boolean granted) {
       OneSignal.provideUserConsent(granted);
+
+      if (this.waitingForUserPrivacyConsent) {
+         this.waitingForUserPrivacyConsent = false;
+
+         this.addObservers();
+      }
    }
 
    @ReactMethod
@@ -389,42 +391,9 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
       promise.resolve(OneSignal.userProvidedPrivacyConsent());
    }
 
-   private void registerNotificationsReceivedNotification() {
-      IntentFilter intentFilter = new IntentFilter(NOTIFICATION_RECEIVED_INTENT_FILTER);
-      mReactContext.registerReceiver(new BroadcastReceiver() {
-         @Override
-         public void onReceive(Context context, Intent intent) {
-               notifyNotificationReceived(intent.getExtras());
-         }
-      }, intentFilter);
-   }
-
-   private void registerNotificationsOpenedNotification() {
-      IntentFilter intentFilter = new IntentFilter(NOTIFICATION_OPENED_INTENT_FILTER);
-      mReactContext.registerReceiver(new BroadcastReceiver() {
-         @Override
-         public void onReceive(Context context, Intent intent) {
-               notifyNotificationOpened(intent.getExtras());
-         }
-      }, intentFilter);
-   }
-
-   private void notifyNotificationReceived(Bundle bundle) {
-      try {
-         JSONObject jsonObject = new JSONObject(bundle.getString("notification"));
-         sendEvent("OneSignal-remoteNotificationReceived", RNUtils.jsonToWritableMap(jsonObject));
-      } catch(Throwable t) {
-         t.printStackTrace();
-      }
-   }
-
-   private void notifyNotificationOpened(Bundle bundle) {
-      try {
-         JSONObject jsonObject = new JSONObject(bundle.getString("result"));
-         sendEvent("OneSignal-remoteNotificationOpened",  RNUtils.jsonToWritableMap(jsonObject));
-      } catch(Throwable t) {
-         t.printStackTrace();
-      }
+   @ReactMethod
+   public void log(int level, String message) {
+       OneSignal.onesignalLog(getLogLevel(level), message);
    }
 
    @Override
@@ -448,4 +417,50 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
       initOneSignal();
    }
 
+  @ReactMethod 
+  public void didSetNotificationOpenedHandler() {
+    this.setNotificationOpenedHandler = true;
+    if (this.coldStartNotificationResult != null) {
+      this.notificationOpened(this.coldStartNotificationResult);
+      this.coldStartNotificationResult = null;
+    }
+  }
+
+  @Override
+  public void onOSSubscriptionChanged(OSSubscriptionStateChanges stateChanges) {
+     this.sendEvent("OneSignal#subscription", OneSignalSerializer.convertSubscriptionStateChangesToMap(stateChanges));
+  }
+
+  @Override
+  public void onOSEmailSubscriptionChanged(OSEmailSubscriptionStateChanges stateChanges) {
+     this.sendEvent("OneSignal#emailSubscription", OneSignalSerializer.convertEmailSubscriptionStateChangesToMap(stateChanges));
+  }
+
+  @Override
+  public void onOSPermissionChanged(OSPermissionStateChanges stateChanges) {
+     this.sendEvent("OneSignal#permission", OneSignalSerializer.convertPermissionStateChangesToMap(stateChanges));
+  }
+
+  @Override
+  public void notificationReceived(OSNotification notification) {
+    try {
+       this.sendEvent("OneSignal#received", OneSignalSerializer.convertNotificationToMap(notification));
+    } catch (JSONException exception) {
+      Log.e("onesignal", "Encountered an error attempting to convert OSNotification object to hash map: " + exception.getMessage() + "\n" + exception.getStackTrace());
+    }
+  }
+
+  @Override
+  public void notificationOpened(OSNotificationOpenResult result) {
+    if (!this.setNotificationOpenedHandler) {
+      this.coldStartNotificationResult = result;
+      return;
+    }
+    
+    try {
+       this.sendEvent("OneSignal#opened", OneSignalSerializer.convertNotificationOpenResultToMap(result));
+    } catch (JSONException exception) {
+      Log.e("onesignal", "Encountered an error attempting to convert OSNotificationOpenResult object to hash map: " + exception.getMessage() + "\n" + exception.getStackTrace());
+    }
+  }
 }

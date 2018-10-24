@@ -3,7 +3,7 @@ export class OSSubscriptionState {
     * Indicates if you have ever called setSubscription(false) 
     * to disable notifications for this user.
     */
-   public userSubscriptionSetting : Boolean;
+   public userSubscriptionSetting : boolean;
 
    /** 
     * A boolean parameter that indicates if the user
@@ -12,16 +12,16 @@ export class OSSubscriptionState {
     * `userSubscriptionSetting` parameters are defined
     * or true
     */
-   public subscribed : Boolean;
+   public subscribed : boolean;
 
    /** 
     * The current user's userId with OneSignal 
     * Also known as 'playerId'
     */
-   public userId? : String;
+   public userId? : string;
 
    /** The APNS (iOS) or GCM/FCM (Android) push token */
-   public pushToken? : String;
+   public pushToken? : string;
 
    public constructor(nativeJson : any) {
       this.userSubscriptionSetting = nativeJson.userSubscriptionSetting;
@@ -54,13 +54,13 @@ export class OSEmailSubscriptionState {
     * Indicates if the user's email has been set with OneSignal
     * and the user has been assigned a OneSignal email userID
     */
-   public subscribed : Boolean;
+   public subscribed : boolean;
 
    /** The user ID for this user's email record with OneSignal */
-   public emailUserId? : String;
+   public emailUserId? : string;
 
    /** The user's email address */
-   public emailAddress? : String;
+   public emailAddress? : string;
 
    public constructor(nativeJson : any) {
       this.subscribed = nativeJson.subscribed;

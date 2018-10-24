@@ -148,46 +148,15 @@ RCT_EXPORT_METHOD(logoutEmail:(RCTResponseSenderBlock)callback) {
 RCT_EXPORT_METHOD(getPermissionSubscriptionState:(RCTResponseSenderBlock)callback)
 {
     if (RCTRunningInAppExtension()) {
-        callback(@[@{
-            @"hasPrompted": @NO,
-            @"notificationsEnabled": @NO,
-            @"subscriptionEnabled": @NO,
-            @"userSubscriptionEnabled": @NO,
-            @"pushToken": [NSNull null],
-            @"userId": [NSNull null],
-            @"emailUserId" : [NSNull null],
-            @"emailAddress" : [NSNull null],
-            @"emailSubscribed" : @false
-         }]);
+        return;
     }
     
     OSPermissionSubscriptionState *state = [OneSignal getPermissionSubscriptionState];
-    OSPermissionState *permissionState = state.permissionStatus;
-    OSSubscriptionState *subscriptionState = state.subscriptionStatus;
-    OSEmailSubscriptionState *emailState = state.emailSubscriptionStatus;
-    
-    // Received push notification prompt? (iOS only property)
-    BOOL hasPrompted = permissionState.hasPrompted == 1;
-    
-    // Notifications enabled for app? (iOS Settings)
-    BOOL notificationsEnabled = permissionState.status == 2;
-    
-    // User subscribed to OneSignal? (automatically toggles with notificationsEnabled)
-    BOOL subscriptionEnabled = subscriptionState.subscribed == 1;
-    
-    // User's original subscription preference (regardless of notificationsEnabled)
-    BOOL userSubscriptionEnabled = subscriptionState.userSubscriptionSetting == 1;
     
     callback(@[@{
-       @"hasPrompted": @(hasPrompted),
-       @"notificationsEnabled": @(notificationsEnabled),
-       @"subscriptionEnabled": @(subscriptionEnabled),
-       @"userSubscriptionEnabled": @(userSubscriptionEnabled),
-       @"pushToken": subscriptionState.pushToken ?: [NSNull null],
-       @"userId": subscriptionState.userId ?: [NSNull null],
-       @"emailUserId" : emailState.emailUserId ?: [NSNull null],
-       @"emailSubscribed" : @(emailState.subscribed),
-       @"emailAddress" : emailState.emailAddress ?: [NSNull null]
+       @"subscriptionStatus" : state.subscriptionStatus.toDictionary,
+       @"permissionStatus" : state.permissionStatus.toDictionary,
+       @"emailSubscriptionStatus" : state.emailSubscriptionStatus.toDictionary
     }]);
 }
 
