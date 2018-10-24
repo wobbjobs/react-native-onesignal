@@ -14,6 +14,12 @@ export declare enum OSLogLevel {
     debug = 5,
     verbose = 6,
 }
+export declare enum OSNotificationPermission {
+    notDetermined = 0,
+    denied = 1,
+    authorized = 2,
+    provisional = 3,
+}
 export declare enum OSNotificationActionType {
     opened = 0,
     actionTaken = 1,

@@ -18,6 +18,13 @@ var OSLogLevel;
     OSLogLevel[OSLogLevel["debug"] = 5] = "debug";
     OSLogLevel[OSLogLevel["verbose"] = 6] = "verbose";
 })(OSLogLevel = exports.OSLogLevel || (exports.OSLogLevel = {}));
+var OSNotificationPermission;
+(function (OSNotificationPermission) {
+    OSNotificationPermission[OSNotificationPermission["notDetermined"] = 0] = "notDetermined";
+    OSNotificationPermission[OSNotificationPermission["denied"] = 1] = "denied";
+    OSNotificationPermission[OSNotificationPermission["authorized"] = 2] = "authorized";
+    OSNotificationPermission[OSNotificationPermission["provisional"] = 3] = "provisional";
+})(OSNotificationPermission = exports.OSNotificationPermission || (exports.OSNotificationPermission = {}));
 var OSNotificationActionType;
 (function (OSNotificationActionType) {
     OSNotificationActionType[OSNotificationActionType["opened"] = 0] = "opened";

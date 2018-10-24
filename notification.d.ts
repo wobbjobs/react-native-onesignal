@@ -7,32 +7,32 @@ export declare class OSNotificationAction {
      */
     type: OSNotificationActionType;
     /** If a button was pressed, this will be the button/action ID */
-    actionId: String;
+    actionId: string;
     constructor(nativeJson: any);
 }
 export declare class OSNotificationPayload extends OSNotificationBase {
     /** The OneSignal Notification ID */
-    notificationId?: String;
+    notificationId?: string;
     /**
      * The name of the template used to create
      * this notification (if applicable)
      */
-    templateName?: String;
+    templateName?: string;
     /**
      * The ID of the template used to create
      * this notification (if applicable)
      */
-    templateId?: String;
+    templateId?: string;
     /** The badge count */
-    badgeCount?: Number;
+    badgeCount?: number;
     /**
      * The badge increment - if the existing badge count
      * is being incremented (ie. +1) this is used instead
      * of the 'badgeCount' parameter
      */
-    iosBadgeIncrement?: Number;
+    iosBadgeIncrement?: number;
     /** The sound played for this notification */
-    sound?: String;
+    sound?: string;
     /** The raw notification payload */
     rawPayload?: any;
     constructor(nativeJson: any);
@@ -40,9 +40,9 @@ export declare class OSNotificationPayload extends OSNotificationBase {
 export declare class OSNotification {
     payload: OSNotificationPayload;
     displayType: OSNotificationDisplayType;
-    shown: Boolean;
-    appInFocus: Boolean;
-    silent: Boolean;
+    shown: boolean;
+    appInFocus: boolean;
+    silent: boolean;
     constructor(nativeJson: any);
 }
 export declare class OSNotificationOpenedResult {

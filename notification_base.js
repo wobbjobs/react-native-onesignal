@@ -17,6 +17,8 @@ class OSActionButton {
 exports.OSActionButton = OSActionButton;
 class OSNotificationBase {
     constructor(nativeJson) {
+        console.log("received notification");
+        console.log(nativeJson);
         if (!nativeJson)
             return;
         if (nativeJson.body)

@@ -5,12 +5,12 @@ export declare class OSCreateNotification extends OSNotificationBase {
      * The App ID that the recipient playerIds are registered with
      * (usually - your app's appId)
      */
-    appId: String;
+    appId: string;
     /** The two-character language code (ie. "en" by default) */
     language: string;
     /** the language for the notification ("en" by default) */
     /** An array of user ID's that should receive this notification */
-    playerIds: String[];
+    playerIds: string[];
     /**
      * Controls if the badge count number overrides the existing badge
      * count (set), or if it is added to the existing count (increase).
@@ -21,11 +21,11 @@ export declare class OSCreateNotification extends OSNotificationBase {
      * The actual badge count to either set to directly, or increment by
      * To decrement the user's badge count, send a negative value
      */
-    iosBadgeCount?: Number;
+    iosBadgeCount?: number;
     /** The sound to play (iOS only) */
-    iosSound?: String;
+    iosSound?: string;
     /** The sound to play (Android only) */
-    androidSound?: String;
-    constructor(notificationAppId: String);
+    androidSound?: string;
+    constructor(notificationAppId: string);
     build(): any;
 }
