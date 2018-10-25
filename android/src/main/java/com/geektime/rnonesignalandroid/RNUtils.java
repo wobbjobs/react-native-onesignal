@@ -64,7 +64,7 @@ public class RNUtils {
                         jsonObject.put(key, readableMapToJson(readableMap.getMap(key)));
                         break;
                     case Array:
-                        jsonObject.put(key, readableMap.getArray(key));
+                        jsonObject.put(key, new JSONArray(readableMap.getArray(key).toArrayList()));
                     default:
                         // Do nothing and fail silently
                 }

@@ -49,8 +49,6 @@ export class OSPermissionSubscriptionState {
    public emailSubscriptionStatus? : OSEmailSubscriptionState;
 
    public constructor(nativeJson : any) {
-      console.log("permission subscription state");
-      console.log(nativeJson);
       this.permissionStatus = new OSPermissionState(nativeJson.permissionStatus);
       this.subscriptionStatus = new OSSubscriptionState(nativeJson.subscriptionStatus);
       this.emailSubscriptionStatus = new OSEmailSubscriptionState(nativeJson.emailSubscriptionStatus);

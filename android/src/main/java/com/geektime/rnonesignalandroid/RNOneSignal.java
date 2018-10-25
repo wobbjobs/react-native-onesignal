@@ -342,13 +342,9 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
             new OneSignal.PostNotificationResponseHandler() {
                @Override
                public void onSuccess(JSONObject response) {
-                  try {
-                      if (callback != null) {
-                          callback.invoke(OneSignalSerializer.convertJSONObjectToHashMap(response));
-                      }
-                  } catch (JSONException e) {
-                      Log.e("onesignal", "Encountered an error attempting to convert PostNotification response to hashmap");
-                  }
+                   if (callback != null) {
+                       callback.invoke(RNUtils.jsonToWritableMap(response));
+                   }
                }
 
                @Override
