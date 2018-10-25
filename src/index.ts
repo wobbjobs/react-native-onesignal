@@ -1,5 +1,3 @@
-import { OneSignal } from './onesignal';
-
 /** Publicly export enums/consts defined in defines.ts */
 export { 
    OSLogLevel, 
@@ -35,4 +33,4 @@ export { OSCreateNotification } from './create_notification';
 export { OSActionButton } from './notification_base';
 
 /** Export OneSignal.shared singleton */
-export let RNOneSignal = OneSignal.shared;
+export { OneSignal } from './onesignal';

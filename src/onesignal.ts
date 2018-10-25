@@ -12,11 +12,6 @@ const OSNativeModule = NativeModules.OneSignal;
 
 export class OneSignal {
    /**
-    * Declares a singleton instance that represents OneSignal's React-Native SDK
-    */
-   public static shared = new OneSignal();
-
-   /**
     * Holds a reference to the native event emitter, which 
     * lets the SDK get events from the native SDK's (iOS and Android)
     */
@@ -39,10 +34,23 @@ export class OneSignal {
     */
    private cachedEvents = new Map<String, Array<any>>();
 
-   constructor() {
+   /**
+    * Initializes the OneSignal SDK.
+    * 
+    * @param appId The OneSignal App ID for your application.
+    * @param iOSSettings iOS-specific to control various settings, such as whether
+    *    or not to prompt users before opening a push notification URL webview
+    */
+   public constructor(appId : String, iOSSettings : Object) {
       this.eventEmitter = new NativeEventEmitter(OSNativeModule);
          
       this.setupObservers();
+      
+      if (Platform.OS == 'ios') {
+         OSNativeModule.initWithAppId(appId, iOSSettings);
+      } else {
+         OSNativeModule.init(appId);
+      }
    }
    
    private addPrivateObserver(event: string, handler: Function) {
@@ -188,21 +196,6 @@ export class OneSignal {
          OSNativeModule.promptForPushNotificationPermission(callback || function(){});
       } else {
          this.onesignalLog(OSLogLevel.warn, "promptForPushNotificationPermission() is only applicable in iOS.");
-      }
-   }
-
-   /**
-    * Initializes the OneSignal SDK.
-    * 
-    * @param appId The OneSignal App ID for your application.
-    * @param iOSSettings iOS-specific to control various settings, such as whether
-    *    or not to prompt users before opening a push notification URL webview
-    */
-   public init(appId : String, iOSSettings : Object) {
-      if (Platform.OS == 'ios') {
-         OSNativeModule.initWithAppId(appId, iOSSettings);
-      } else {
-         OSNativeModule.init(appId);
       }
    }
 

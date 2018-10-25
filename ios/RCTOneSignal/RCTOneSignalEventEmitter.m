@@ -145,19 +145,21 @@ RCT_EXPORT_METHOD(logoutEmail:(RCTResponseSenderBlock)callback) {
     }];
 }
 
-RCT_EXPORT_METHOD(getPermissionSubscriptionState:(RCTResponseSenderBlock)callback)
+RCT_REMAP_METHOD(getPermissionSubscriptionState, permissionSubscriptionResolver: (RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
 {
     if (RCTRunningInAppExtension()) {
+        reject(@"onesignal", @"Cannot run getPermissionSubscriptionState() in app extension", nil);
         return;
     }
     
     OSPermissionSubscriptionState *state = [OneSignal getPermissionSubscriptionState];
     
-    callback(@[@{
-       @"subscriptionStatus" : state.subscriptionStatus.toDictionary,
-       @"permissionStatus" : state.permissionStatus.toDictionary,
-       @"emailSubscriptionStatus" : state.emailSubscriptionStatus.toDictionary
-    }]);
+    resolve(@{
+              @"subscriptionStatus" : state.subscriptionStatus.toDictionary,
+              @"permissionStatus" : state.permissionStatus.toDictionary,
+              @"emailSubscriptionStatus" : state.emailSubscriptionStatus.toDictionary
+              });
 }
 
 RCT_EXPORT_METHOD(setInFocusDisplayType:(int)displayType) {

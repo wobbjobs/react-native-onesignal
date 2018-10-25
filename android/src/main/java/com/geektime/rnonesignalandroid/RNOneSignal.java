@@ -277,13 +277,15 @@ public class RNOneSignal extends ReactContextBaseJavaModule implements Lifecycle
    }
 
    @ReactMethod
-   public void getPermissionSubscriptionState(final Callback callback) {
+   public void getPermissionSubscriptionState(Promise promise) {
       OSPermissionSubscriptionState state = OneSignal.getPermissionSubscriptionState();
 
       if (state == null)
          return;
 
-      callback.invoke(OneSignalSerializer.convertPermissionSubscriptionStateToMap(state));
+      HashMap stateMap = OneSignalSerializer.convertPermissionSubscriptionStateToMap(state);
+
+      promise.resolve(Arguments.makeNativeMap(stateMap));
    }
 
    @ReactMethod
