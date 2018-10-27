@@ -1,4 +1,4 @@
-import { OSCreateNotificationBadgeType, OSCreateNotificationDelayOption, OSNotificationActionType } from 'react-native-onesignal/src/defines';
+import { OSCreateNotificationBadgeType, OSCreateNotificationDelayOption, OSNotificationActionType } from './defines';
 
 export class OSActionButton {
    /** The custom identifier for this button/action */

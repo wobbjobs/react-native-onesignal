@@ -1,5 +1,5 @@
 import { OSNotificationPermission } from './defines';
-import { OSSubscriptionState, OSEmailSubscriptionState } from 'react-native-onesignal/src/subscription';
+import { OSSubscriptionState, OSEmailSubscriptionState } from './subscription';
 
 export class OSPermissionState {
    /** 

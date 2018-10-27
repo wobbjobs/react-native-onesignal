@@ -5,7 +5,7 @@ import { OSActionButton } from './notification_base';
 import { OSCreateNotification } from './create_notification';
 import { OSNotificationPayload, OSNotification, OSNotificationOpenedResult } from './notification';
 import { OSSubscriptionState, OSEmailSubscriptionState, OSSubscriptionStateChanges, OSEmailSubscriptionStateChanges } from './subscription';
-import { OSPermissionState, OSPermissionSubscriptionState, OSPermissionStateChanges } from 'react-native-onesignal/src/permission';
+import { OSPermissionState, OSPermissionSubscriptionState, OSPermissionStateChanges } from './permission';
 
 /** Define the native module */
 const OSNativeModule = NativeModules.OneSignal;
@@ -20,19 +20,19 @@ export class OneSignal {
    /**
     * Maps event names to event emitter subscriptions.
     */
-   private listeners = new Map<String, EmitterSubscription>();
+   private listeners = new Map<string, EmitterSubscription>();
 
    /**
     * Maps event names to the app's added event listeners 
     * (eg. using OneSignal.addSubscriptionListener() etc.)
     */
-   private eventSubscribers = new Map<String, Array<Function>>();
+   private eventSubscribers = new Map<string, Array<Function>>();
 
    /**
     * Holds a cache of events that were received before the
     * app added a subscriber for the event
     */
-   private cachedEvents = new Map<String, Array<any>>();
+   private cachedEvents = new Map<string, Array<any>>();
 
    /**
     * Initializes the OneSignal SDK.
@@ -41,7 +41,7 @@ export class OneSignal {
     * @param iOSSettings iOS-specific to control various settings, such as whether
     *    or not to prompt users before opening a push notification URL webview
     */
-   public constructor(appId : String, iOSSettings : Object) {
+   public constructor(appId : string, iOSSettings : Object) {
       this.eventEmitter = new NativeEventEmitter(OSNativeModule);
          
       this.setupObservers();
@@ -53,7 +53,7 @@ export class OneSignal {
       }
    }
    
-   private addPrivateObserver(event: string, handler: Function) {
+   private addPrivateObserver(event: string, handler: (...args: any[]) => any) {
       this.listeners.set(event, this.eventEmitter.addListener(event, object => {
          handler(object);
       }));
@@ -70,7 +70,7 @@ export class OneSignal {
       }
    }
 
-   private fireObservers<T>(event: String, object : T) {
+   private fireObservers<T>(event: string, object : T) {
       let handlers = this.eventSubscribers.get(event);
 
       if (handlers && handlers.length > 0) {
@@ -121,7 +121,7 @@ export class OneSignal {
       });
    }
 
-   private onesignalLog(level : OSLogLevel, message : String) {
+   private onesignalLog(level : OSLogLevel, message : string) {
       OSNativeModule.log(level, message);
    }
 
@@ -132,7 +132,7 @@ export class OneSignal {
     * @param handler The callback/function that fires when a notification
     * is received.
     */
-   public addNotificationReceivedObserver(handler : Function) {
+   public addNotificationReceivedObserver(handler : (notification: OSNotification) => void) {
       this.addObserver(OSEvent.received, handler);
    }
 
@@ -142,7 +142,7 @@ export class OneSignal {
     * @param handler : The callback/function that fires when a 
     * notification is opened
     */
-   public addNotificationOpenedObserver(handler : Function) {
+   public addNotificationOpenedObserver(handler : (openResult: OSNotificationOpenedResult) => void) {
       this.addObserver(OSEvent.opened, handler);
    }
 
@@ -154,7 +154,7 @@ export class OneSignal {
     * @param handler The callback/function that fires when the 
     * user's push notification subscription state changes.
     */
-   public addSubscriptionObserver(handler : Function) {
+   public addSubscriptionObserver(handler : (changes: OSSubscriptionStateChanges) => void) {
       this.addObserver(OSEvent.subscription, handler);
    }
 
@@ -164,7 +164,7 @@ export class OneSignal {
     * 
     * @param handler The callback/function that fires when permission changes.
     */
-   public addPermissionObserver(handler : Function) {
+   public addPermissionObserver(handler : (changes: OSPermissionStateChanges) => void) {
       this.addObserver(OSEvent.permission, handler);
    }
 
@@ -176,7 +176,7 @@ export class OneSignal {
     * @param handler The callback/function that fires when the email subscription
     * state changes.
     */
-   public addEmailSubscriptionObserver(handler : Function) {
+   public addEmailSubscriptionObserver(handler : (changes: OSEmailSubscriptionStateChanges) => void) {
       this.addObserver(OSEvent.emailSubscription, handler);
    }
 
@@ -184,7 +184,11 @@ export class OneSignal {
     * Clears all event observers/listeners
     */
    public clearObservers() {
-      this.eventSubscribers.clear();
+      this.listeners.forEach((subscription, eventName) => {
+         this.eventEmitter.removeSubscription(subscription);
+      });
+
+      this.listeners.clear();
    }
 
    /**
@@ -210,23 +214,23 @@ export class OneSignal {
       OSNativeModule.getTags(callback || function(){});
    }
 
-   public sendTag(key : String, value : any, callback? : Function) {
+   public sendTag(key : string, value : any, callback? : Function) {
       this.sendTags({key : value}, callback || function(){});
    }
 
-   public sendTags(tags : Object, callback? : Function) {
+   public sendTags(tags : any, callback? : Function) {
       OSNativeModule.sendTags(tags, callback || function(){});
    }
 
-   public deleteTags(keys : Array<String>, callback? : Function) {
+   public deleteTags(keys : Array<string>, callback? : Function) {
       OSNativeModule.deleteTags(keys, callback || function(){});
    }
 
-   public deleteTag(key : String, callback? : Function) {
+   public deleteTag(key : string, callback? : Function) {
       this.deleteTags([key], callback || function(){});
    }
 
-   public enableAndroidVibrate(enable : Boolean) {
+   public enableAndroidVibrate(enable : boolean) {
       if (Platform.OS == 'android') {
          OSNativeModule.enableVibrate(enable);
       } else {
@@ -234,7 +238,7 @@ export class OneSignal {
       }
    }
 
-   public enableAndroidSound(enable : Boolean) {
+   public enableAndroidSound(enable : boolean) {
       if (Platform.OS == 'android') {
          OSNativeModule.enableSound(enable);
       } else {
@@ -242,7 +246,7 @@ export class OneSignal {
       }
    }
 
-   public setEmail(email : String, emailAuthCode? : String, callback? : Function) {
+   public setEmail(email : string, emailAuthCode? : string, callback? : Function) {
       OSNativeModule.setEmail(email, emailAuthCode, callback || function(){});
    }
 
@@ -250,11 +254,11 @@ export class OneSignal {
       OSNativeModule.logoutEmail(callback || function(){});
    }
 
-   public setLocationShared(shared : Boolean) {
+   public setLocationShared(shared : boolean) {
       OSNativeModule.setLocationShared(shared);
    }
 
-   public setSubscription(enabled : Boolean) {
+   public setSubscription(enabled : boolean) {
       OSNativeModule.setSubscription(enabled);
    }
 
@@ -290,7 +294,7 @@ export class OneSignal {
       OSNativeModule.setLogLevel(consoleLevel, visualLogLevel);
    }
 
-   public setRequiresUserPrivacyConsent(required : Boolean) {
+   public setRequiresUserPrivacyConsent(required : boolean) {
       OSNativeModule.setRequiresUserPrivacyConsent(required);
    }
 
@@ -298,7 +302,7 @@ export class OneSignal {
       OSNativeModule.provideUserConsent(granted);
    }
 
-   public userProvidedPrivacyConsent() : Boolean {
+   public userProvidedPrivacyConsent() : boolean {
       return OSNativeModule.userProvidedPrivacyConsent();
    }
 
