@@ -4,9 +4,11 @@ module.exports = {
      "<rootDir>/src/__tests__"
    ],
    "transform": {
-     "^.+\\.tsx?$": "ts-jest"
+     "^.+\\.jsx?$": "babel-jest",
+     "^.+\\.tsx?$": "ts-jest",
+     "\\.(ts|tsx)$": "<rootDir>/node_modules/ts-jest/preprocessor.js"
    },
-   "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.ts$",
+   "testRegex": "(/__tests__/.*|\\.(test|spec))\\.ts$",
    "testPathIgnorePatterns": [".d.ts$", "/node_modules/"],
    "moduleFileExtensions": [
       "ts",
@@ -21,5 +23,5 @@ module.exports = {
        "tsConfigFile": "<rootDir>/tsconfig.json"
      }
    },
-   "modulePathIgnorePatterns": ["<rootDir>/Examples/"],
+   "modulePathIgnorePatterns": ["<rootDir>/Examples/"]
  }
