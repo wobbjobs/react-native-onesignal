@@ -1,7 +1,8 @@
 
 'use strict';
 
-import { NativeModules, NativeAppEventEmitter, NetInfo, Platform } from 'react-native';
+import { NativeModules, NativeAppEventEmitter, Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import invariant from 'invariant';
 
 var _eventBroadcastNames = [
